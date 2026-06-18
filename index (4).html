@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Bridgewell Simulation (Lifespan) Hub | V6.2</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .theme-transition { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .bg-hub-purple { background-color: #2D0052; }
+        .glass-box { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        input[type="range"] { accent-color: var(--theory-accent); }
+        @keyframes loading { 0% { width: 0%; } 100% { width: 100%; } }
+        .bar-anim { animation: loading 1.2s linear forwards; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white !important; }
+            .page-break { page-break-inside: avoid; }
+        }
+        .print-only { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased">
+    <div id="root"></div>
+
+    <script id="app-source" type="text/babel-raw">
+        const { useState, useEffect } = React;
+
+        const THEORY_ORDER = [
+            'Health Belief Model (HBM)',
+            'Theory of Planned Behavior (TPB)',
+            'Transtheoretical Model (TTM)',
+            'Social Cognitive Theory (SCT)',
+            'Socio-Ecological Model (SEM)',
+            'Diffusion of Innovations (DOI)',
+            'Community Empowerment'
+        ];
+
+        const THEORIES = {
+            'Health Belief Model (HBM)': {
+                accent: '#0369a1',
+                levers: [
+                    { l: 'Susceptibility', i: 'Personal belief about the likelihood of contracting the specific condition.' },
+                    { l: 'Severity', i: 'Belief about the seriousness of the illness and its clinical consequences.' },
+                    { l: 'Benefits', i: 'Perceived efficacy of the health promotion action in reducing the threat.' },
+                    { l: 'Barriers', i: 'Tangible and psychological costs associated with the advised action.' },
+                    { l: 'Cues to Action', i: 'Triggers that activate readiness (symptoms, media, reminders).' }
+                ],
+                weights: { Pediatric: [0.18, 0.18, 0.22, 0.18, 0.24], Adolescent: [0.18, 0.18, 0.22, 0.18, 0.24], Adult: [0.2, 0.2, 0.22, 0.18, 0.2], Geriatric: [0.2, 0.22, 0.2, 0.18, 0.2] }
+            },
+            'Theory of Planned Behavior (TPB)': {
+                accent: '#7c3aed',
+                levers: [
+                    { l: 'Instrumental Att.', i: 'Cognitive belief that the behavior leads to a specific health outcome.' },
+                    { l: 'Affective Att.', i: 'Emotional response to the behavior (pleasurable vs. unpleasurable).' },
+                    { l: 'Injunctive Norms', i: 'Perceived social pressure from significant others to perform the behavior.' },
+                    { l: 'Descriptive Norms', i: 'Perceptions of whether others are actually performing the behavior.' },
+                    { l: 'Self-Efficacy', i: 'The perceived ease or difficulty of performing the behavior.' }
+                ],
+                weights: {
+                    Pediatric: [0.16, 0.16, 0.2, 0.24, 0.24],
+                    Adolescent: [0.14, 0.14, 0.18, 0.3, 0.24],
+                    Adult: [0.2, 0.14, 0.18, 0.22, 0.26],
+                    Geriatric: [0.18, 0.12, 0.18, 0.18, 0.34]
+                }
+            },
+            'Transtheoretical Model (TTM)': {
+                accent: '#db2777',
+                levers: [
+                    { l: 'Consciousness Raising', i: 'Finding and learning new facts and tips that support the change.' },
+                    { l: 'Decisional Balance', i: 'The relative weighting of the pros and cons of changing behavior.' },
+                    { l: 'Self-Reevaluation', i: 'Cognitive and affective assessment of one’s self-image.' },
+                    { l: 'Self-Liberation', i: 'Belief that one can change and the commitment to act on that belief.' },
+                    { l: 'Helping Relationships', i: 'Seeking and using social support for the healthy behavior change.' }
+                ],
+                weights: { Pediatric: [0.2, 0.2, 0.16, 0.18, 0.26], Adolescent: [0.2, 0.2, 0.16, 0.18, 0.26], Adult: [0.18, 0.22, 0.16, 0.22, 0.22], Geriatric: [0.18, 0.22, 0.14, 0.22, 0.24] }
+            },
+            'Social Cognitive Theory (SCT)': {
+                accent: '#059669',
+                levers: [
+                    { l: 'Self-Efficacy', i: 'Confidence in one’s ability to take action and persist in that action.' },
+                    { l: 'Observational Learning', i: 'Behavioral acquisition by watching the actions and outcomes of others.' },
+                    { l: 'Expectations', i: 'The anticipated consequences of a person’s behavior.' },
+                    { l: 'Reinforcements', i: 'Responses to a person’s behavior that increase/decrease recurrence.' },
+                    { l: 'Determinism', i: 'Interplay between personal factors, environment, and behavior.' }
+                ],
+                weights: { Pediatric: [0.22, 0.24, 0.16, 0.18, 0.2], Adolescent: [0.24, 0.22, 0.16, 0.18, 0.2], Adult: [0.26, 0.16, 0.18, 0.18, 0.22], Geriatric: [0.28, 0.14, 0.18, 0.16, 0.24] }
+            },
+            'Socio-Ecological Model (SEM)': {
+                accent: '#d97706',
+                levers: [
+                    { l: 'Individual Factors', i: 'Biological/Personal history, knowledge, attitudes, and skills.' },
+                    { l: 'Interpersonal', i: 'Social networks, family, peers, and support systems.' },
+                    { l: 'Organizational', i: 'Institutional rules, regulations, policies, and informal structures.' },
+                    { l: 'Community Factors', i: 'Relationships between organizations and neighborhood environments.' },
+                    { l: 'Public Policy', i: 'Local, state, and federal laws and regulations.' }
+                ],
+                weights: { Pediatric: [0.18, 0.24, 0.18, 0.2, 0.2], Adolescent: [0.18, 0.24, 0.18, 0.2, 0.2], Adult: [0.18, 0.2, 0.2, 0.22, 0.2], Geriatric: [0.16, 0.2, 0.22, 0.22, 0.2] }
+            },
+            'Diffusion of Innovations (DOI)': {
+                accent: '#2563eb',
+                levers: [
+                    { l: 'Relative Advantage', i: 'Is the new health promotion better than what it replaces?' },
+                    { l: 'Compatibility', i: 'Consistency with existing values, past experiences, and needs.' },
+                    { l: 'Complexity', i: 'The degree to which the innovation is perceived as difficult to use.' },
+                    { l: 'Trialability', i: 'The degree to which an innovation may be experimented with.' },
+                    { l: 'Observability', i: 'Degree to which results of an innovation are visible to others.' }
+                ],
+                weights: { Pediatric: [0.22, 0.22, 0.18, 0.18, 0.2], Adolescent: [0.22, 0.22, 0.18, 0.18, 0.2], Adult: [0.24, 0.22, 0.16, 0.18, 0.2], Geriatric: [0.22, 0.24, 0.18, 0.18, 0.18] }
+            },
+            'Community Empowerment': {
+                accent: '#e11d48',
+                levers: [
+                    { l: 'Awareness', i: 'Shared understanding of social and political causes of health.' },
+                    { l: 'Leadership', i: 'Developing local skills to drive community decision making.' },
+                    { l: 'Mobilization', i: 'Securing resources and community-wide involvement.' },
+                    { l: 'Structure', i: 'Building formal community groups and networks for action.' },
+                    { l: 'Collective Action', i: 'Collaborative efforts to change environments or policies.' }
+                ],
+                weights: { Pediatric: [0.18, 0.2, 0.22, 0.2, 0.2], Adolescent: [0.18, 0.2, 0.22, 0.2, 0.2], Adult: [0.16, 0.18, 0.24, 0.2, 0.22], Geriatric: [0.16, 0.18, 0.24, 0.2, 0.22] }
+            }
+        };
+
+        const defaultLevers = { l1: 50, l2: 50, l3: 50, l4: 50, l5: 50 };
+        const defaultProfiles = { genetics: false, earlyDet: false, guidance: true };
+        const defaultBarriers = { cost: true, digital: false, trust: false };
+
+        const summarizeLevers = (theory, stage, levers) => {
+            const weights = THEORIES[theory].weights[stage];
+            const ranked = THEORIES[theory].levers
+                .map((lever, idx) => ({
+                    label: lever.l,
+                    value: levers[`l${idx+1}`],
+                    weighted: levers[`l${idx+1}`] * weights[idx]
+                }))
+                .sort((a, b) => b.weighted - a.weighted);
+            return ranked.slice(0, 2);
+        };
+
+        const formatBarrierSummary = (barriers) => {
+            const active = [];
+            if (barriers.cost) active.push('financial access barrier');
+            if (barriers.digital) active.push('digital access barrier');
+            if (barriers.trust) active.push('institutional distrust');
+            return active.length ? active.join(', ') : 'no active systemic barriers';
+        };
+
+        const formatProfileSummary = (profiles) => {
+            const active = [];
+            if (profiles.genetics) active.push('high genetic predisposition');
+            if (profiles.earlyDet) active.push('early risk detection active');
+            if (profiles.guidance) active.push('anticipatory guidance active');
+            return active.length ? active.join(', ') : 'baseline preventive profile';
+        };
+
+        const classifyEfficacy = (score) => {
+            if (score >= 78) return 'Optimal';
+            if (score >= 55) return 'Developing';
+            return 'Limited';
+        };
+
+        const classifyEquity = (score, barriers) => {
+            const activeBarrierCount = Object.values(barriers).filter(Boolean).length;
+            if (activeBarrierCount === 0 && score >= 68) return 'Stable';
+            if (activeBarrierCount <= 1 && score >= 60) return 'Watch';
+            return 'Disparity Risk';
+        };
+
+        const buildNarrative = ({ stage, theory, score, efficacy, equity, barrierSummary, profileSummary, topDrivers }) => {
+            const driverText = topDrivers.map(d => `${d.label} (${d.value}%)`).join(' and ');
+            return `For the ${stage.toLowerCase()} population, ${theory.split(' (')[0]} produced a ${efficacy.toLowerCase()} efficacy profile with an impact score of ${score}%. The strongest modeled drivers were ${driverText}. The preventive context included ${profileSummary}, while the system context reflected ${barrierSummary}. Overall equity status was ${equity.toLowerCase()}, suggesting that theory-informed changes may still be moderated by access and trust conditions.`;
+        };
+
+        const Dashboard = () => {
+            const [theory, setTheory] = useState('Health Belief Model (HBM)');
+            const [stage, setStage] = useState('Adult');
+            const [levers, setLevers] = useState(defaultLevers);
+            const [profiles, setProfiles] = useState(defaultProfiles);
+            const [barriers, setBarriers] = useState(defaultBarriers);
+            const [isRunning, setIsRunning] = useState(false);
+            const [results, setResults] = useState(null);
+            const [openTooltip, setOpenTooltip] = useState(null);
+            const [portfolio, setPortfolio] = useState(() => {
+                const saved = localStorage.getItem('hub_portfolio_v62');
+                return saved ? JSON.parse(saved) : [];
+            });
+
+            useEffect(() => {
+                localStorage.setItem('hub_portfolio_v62', JSON.stringify(portfolio));
+            }, [portfolio]);
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [portfolio, theory, results, isRunning, openTooltip, barriers, profiles, stage]);
+
+            const resetCurrentScenario = () => {
+                setLevers(defaultLevers);
+                setProfiles(defaultProfiles);
+                setBarriers(defaultBarriers);
+                setResults(null);
+            };
+
+            const runAnalysis = () => {
+                setIsRunning(true);
+                setResults(null);
+
+                setTimeout(() => {
+                    const weights = THEORIES[theory].weights[stage];
+                    const values = Object.values(levers).map(v => v / 100);
+                    const weightedBase = values.reduce((sum, value, idx) => sum + (value * weights[idx]), 0);
+
+                    let score = weightedBase * 100;
+
+                    if (profiles.genetics) score -= 10;
+                    if (profiles.earlyDet) score += 12;
+                    if (profiles.guidance) score += 8;
+                    if (barriers.cost) score -= 14;
+                    if (barriers.digital) score -= (stage === 'Geriatric' ? 16 : 10);
+                    if (barriers.trust) score -= 12;
+
+                    if (theory === 'Theory of Planned Behavior (TPB)') {
+                        const descriptiveNorms = levers.l4;
+                        const selfEfficacy = levers.l5;
+                        if (stage === 'Adolescent' && descriptiveNorms >= 70) score += 6;
+                        if (stage === 'Adult' && selfEfficacy >= 70) score += 4;
+                        if (stage === 'Geriatric' && selfEfficacy >= 70 && !barriers.digital) score += 5;
+                    }
+
+                    score = Math.max(10, Math.min(100, Math.round(score)));
+
+                    const efficacy = classifyEfficacy(score);
+                    const equity = classifyEquity(score, barriers);
+                    const topDrivers = summarizeLevers(theory, stage, levers);
+                    const barrierSummary = formatBarrierSummary(barriers);
+                    const profileSummary = formatProfileSummary(profiles);
+                    const narrative = buildNarrative({
+                        stage,
+                        theory,
+                        score,
+                        efficacy,
+                        equity,
+                        barrierSummary,
+                        profileSummary,
+                        topDrivers
+                    });
+
+                    setResults({
+                        promotionEfficacy: efficacy,
+                        impactScore: score,
+                        equityStatus: equity,
+                        topDrivers,
+                        barrierSummary,
+                        profileSummary,
+                        narrative
+                    });
+                    setIsRunning(false);
+                }, 1200);
+            };
+
+            const addToMasterPlan = () => {
+                if (!results) return;
+                setPortfolio([
+                    ...portfolio,
+                    {
+                        id: Date.now(),
+                        stage,
+                        theory,
+                        levers,
+                        profiles,
+                        barriers,
+                        results,
+                        date: new Date().toLocaleDateString()
+                    }
+                ]);
+            };
+
+            return (
+                <div style={{ '--theory-accent': THEORIES[theory].accent }} className="min-h-screen theme-transition pb-24">
+                    <header className="bg-hub-purple text-white p-8 shadow-2xl no-print">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start gap-8">
+                            <div className="space-y-1">
+                                <h1 className="text-4xl font-black uppercase tracking-tighter italic">The Bridgewell Simulation (Lifespan) Hub</h1>
+                                <p className="text-[10px] opacity-60 tracking-[0.4em] uppercase">Clinical Health Promotion & Assessment Lab | V6.2</p>
+                            </div>
+                            <div className="flex gap-4 w-full md:w-auto">
+                                <div className="glass-box p-3 rounded-2xl flex-1 md:w-56">
+                                    <span className="block text-[9px] font-black uppercase opacity-60 mb-1">Developmental Stage</span>
+                                    <select value={stage} onChange={(e) => setStage(e.target.value)} className="bg-transparent font-bold text-lg outline-none w-full">
+                                        {['Pediatric', 'Adolescent', 'Adult', 'Geriatric'].map(s => <option key={s} className="text-slate-900">{s}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+                        <section className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm no-print">
+                            <div className="grid grid-cols-1 md:grid-cols-3">
+                                <div className="p-8 bg-slate-50 border-r border-slate-200">
+                                    <h2 className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest flex items-center gap-2">
+                                        <i data-lucide="target" className="w-3 h-3"></i> Hub Purpose Statement
+                                    </h2>
+                                    <p className="text-sm font-semibold text-slate-700 leading-relaxed italic">
+                                        "To provide a clinical synthesis environment where students integrate behavioral theory, human development research, and genetic risk profiles to design and validate evidence-based health promotion plans across the lifespan."
+                                    </p>
+                                </div>
+                                <div className="p-8 md:col-span-2">
+                                    <h2 className="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest flex items-center gap-2">
+                                        <i data-lucide="compass" className="w-3 h-3"></i> Operational Directions
+                                    </h2>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                        <DirectionStep number="1" text={<span>Select your <strong>Developmental Stage</strong> and <strong>Theoretical Framework</strong>.</span>} />
+                                        <DirectionStep number="2" text={<span>Adjust the <strong>Construct Sliders</strong>. Use the info icon for academic definitions.</span>} />
+                                        <DirectionStep number="3" text={<span>Calibrate the <strong>Biological & Preventive Profile</strong> and all visible <strong>Systemic Barriers</strong>.</span>} />
+                                        <DirectionStep number="4" text={<span>Click <strong>Run Synthesis Analysis</strong>, review the results, and optionally <strong>Add to Master Plan</strong>.</span>} />
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                            <div className="lg:col-span-7 space-y-6 no-print">
+                                <div className="bg-white p-2 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap gap-1">
+                                    {THEORY_ORDER.map(t => (
+                                        <button
+                                            key={t}
+                                            onClick={() => { setTheory(t); setOpenTooltip(null); }}
+                                            className={`flex-1 px-2 py-3 text-[9px] font-black uppercase rounded-lg transition-all border ${theory === t ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 border-transparent hover:bg-slate-50'}`}
+                                        >
+                                            {t.split(' (')[0]}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200">
+                                    <div className="flex items-center justify-between gap-4 border-b pb-2 mb-8">
+                                        <h3 className="text-lg font-black uppercase tracking-tighter text-slate-400 italic">Theoretical Constructs</h3>
+                                        <button onClick={resetCurrentScenario} className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50">
+                                            Reset Current Run
+                                        </button>
+                                    </div>
+                                    <div className="space-y-10">
+                                        {THEORIES[theory].levers.map((lever, i) => (
+                                            <div key={lever.l} className="relative">
+                                                <div className="flex justify-between items-center mb-2 gap-3">
+                                                    <div className="flex items-center gap-2 relative flex-wrap">
+                                                        <span className="text-xs font-bold text-slate-700">{lever.l}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setOpenTooltip(openTooltip === i ? null : i)}
+                                                            className="text-slate-300 hover:text-[var(--theory-accent)]"
+                                                            aria-label={`Definition for ${lever.l}`}
+                                                        >
+                                                            <i data-lucide="info" className="w-4 h-4"></i>
+                                                        </button>
+                                                    </div>
+                                                    <span className="text-[var(--theory-accent)] font-black text-xs">{levers[`l${i + 1}`]}%</span>
+                                                </div>
+                                                {openTooltip === i && (
+                                                    <div className="mb-3 bg-slate-900 text-white text-[11px] p-3 rounded-xl shadow-xl">
+                                                        <p className="font-medium leading-relaxed italic">{lever.i}</p>
+                                                    </div>
+                                                )}
+                                                <input
+                                                    type="range"
+                                                    min="0"
+                                                    max="100"
+                                                    className="w-full h-1.5 bg-slate-100 rounded-full appearance-none cursor-pointer"
+                                                    value={levers[`l${i + 1}`]}
+                                                    onChange={(e) => setLevers({ ...levers, [`l${i + 1}`]: parseInt(e.target.value, 10) })}
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="bg-white p-6 rounded-3xl border shadow-sm">
+                                        <h3 className="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest">Biological & Preventive Profile</h3>
+                                        <div className="space-y-2">
+                                            <ProfileBtn label="High Genetic Predisposition" active={profiles.genetics} onClick={() => setProfiles({ ...profiles, genetics: !profiles.genetics })} icon="dna" />
+                                            <ProfileBtn label="Early Risk Detection System" active={profiles.earlyDet} onClick={() => setProfiles({ ...profiles, earlyDet: !profiles.earlyDet })} icon="search" />
+                                            <ProfileBtn label="Anticipatory Guidance Plan" active={profiles.guidance} onClick={() => setProfiles({ ...profiles, guidance: !profiles.guidance })} icon="map" />
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-3xl border shadow-sm">
+                                        <h3 className="text-[10px] font-black uppercase text-slate-400 mb-4 tracking-widest">Systemic Barriers</h3>
+                                        <div className="space-y-2">
+                                            <ProfileBtn label="Financial Access Barrier" active={barriers.cost} onClick={() => setBarriers({ ...barriers, cost: !barriers.cost })} icon="dollar-sign" />
+                                            <ProfileBtn label="Digital Access Barrier" active={barriers.digital} onClick={() => setBarriers({ ...barriers, digital: !barriers.digital })} icon="wifi-off" />
+                                            <ProfileBtn label="Institutional Distrust" active={barriers.trust} onClick={() => setBarriers({ ...barriers, trust: !barriers.trust })} icon="shield-off" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="lg:col-span-5 space-y-6">
+                                <div className="bg-white p-8 rounded-3xl shadow-2xl border-t-8 border-[var(--theory-accent)] sticky top-8">
+                                    <h3 className="text-xl font-black mb-8 uppercase tracking-tighter italic border-b pb-2">Analysis Hub</h3>
+                                    <button onClick={runAnalysis} disabled={isRunning} className="w-full py-6 rounded-2xl bg-slate-900 text-white font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all mb-8">
+                                        {isRunning ? (
+                                            <div className="w-full px-8">
+                                                <div className="text-[10px] mb-2 opacity-50 uppercase">Analyzing...</div>
+                                                <div className="h-1 bg-slate-700 rounded-full overflow-hidden"><div className="h-full bg-blue-400 bar-anim"></div></div>
+                                            </div>
+                                        ) : 'Run Synthesis Analysis'}
+                                    </button>
+
+                                    <div className={`space-y-4 transition-all duration-500 ${!results ? 'opacity-20 blur-sm pointer-events-none' : 'opacity-100'}`}>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <ResultCard label="Efficacy Level" val={results?.promotionEfficacy} />
+                                            <ResultCard label="Impact Score" val={results ? `${results.impactScore}%` : '---'} />
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            <ResultCard label="Equity Status" val={results?.equityStatus} />
+                                        </div>
+
+                                        {results && (
+                                            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                                                <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Evidence Snapshot</h4>
+                                                <p className="text-xs text-slate-600 leading-relaxed"><strong>Top Drivers:</strong> {results.topDrivers.map(d => `${d.label} (${d.value}%)`).join(', ')}</p>
+                                                <p className="text-xs text-slate-600 leading-relaxed"><strong>Barriers:</strong> {results.barrierSummary}</p>
+                                                <p className="text-xs text-slate-600 leading-relaxed"><strong>Profile:</strong> {results.profileSummary}</p>
+                                                <p className="text-xs text-slate-700 leading-relaxed"><strong>Interpretive Summary:</strong> {results.narrative}</p>
+                                            </div>
+                                        )}
+
+                                        <button onClick={addToMasterPlan} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center justify-center gap-2">
+                                            <i data-lucide="plus-circle" className="w-4 h-4"></i> Add to Master Plan
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-6 rounded-3xl border border-slate-200 no-print">
+                                    <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Saved Components ({portfolio.length})</h3>
+                                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2">
+                                        {portfolio.length === 0 && (
+                                            <div className="p-4 bg-slate-50 border rounded-xl text-xs text-slate-500 leading-relaxed">
+                                                No saved entries yet. Run an analysis and add it to the plan.
+                                            </div>
+                                        )}
+                                        {portfolio.map(p => (
+                                            <div key={p.id} className="p-3 bg-slate-50 border rounded-xl flex justify-between items-center gap-4">
+                                                <div>
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase leading-none">{p.stage}</span>
+                                                    <p className="text-xs font-bold text-slate-700">{p.theory.split(' (')[0]}</p>
+                                                    <p className="text-[10px] text-slate-500 mt-1">{p.results.equityStatus}</p>
+                                                </div>
+                                                <span className="text-xs font-black text-blue-600">{p.results.impactScore}%</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {portfolio.length > 0 && (
+                                        <button onClick={() => window.print()} className="w-full mt-6 py-3 border-2 border-slate-900 text-slate-900 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all">
+                                            Generate Synthesis Report
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="print-only p-12 bg-white">
+                        <h1 className="text-4xl font-black uppercase border-b-8 border-slate-900 pb-4 mb-12 italic">Master Lifespan Synthesis Plan</h1>
+                        {portfolio.map((entry, idx) => (
+                            <div key={entry.id} className="page-break mb-16 border-l-8 border-slate-100 pl-10">
+                                <h2 className="text-3xl font-black uppercase tracking-tighter mb-8">{idx + 1}. {entry.stage} Developmental Context</h2>
+                                <div className="grid grid-cols-2 gap-12 mb-8">
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h3 className="text-[10px] font-black uppercase text-slate-400 mb-2">Theoretical Basis</h3>
+                                            <p className="text-xl font-bold border-b pb-2">{entry.theory}</p>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <h3 className="text-[9px] font-black uppercase text-slate-400">Efficacy</h3>
+                                                <p className="text-lg font-black">{entry.results.promotionEfficacy}</p>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-[9px] font-black uppercase text-slate-400">Score</h3>
+                                                <p className="text-lg font-black">{entry.results.impactScore}%</p>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-[9px] font-black uppercase text-slate-400">Equity</h3>
+                                                <p className="text-lg font-black">{entry.results.equityStatus}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-50 p-6 rounded-2xl">
+                                        <h3 className="text-[10px] font-black uppercase text-slate-400 mb-4">Population Conditions</h3>
+                                        <ul className="text-xs font-bold space-y-2">
+                                            <li>Genetics: {entry.profiles.genetics ? 'HIGH RISK' : 'BASELINE'}</li>
+                                            <li>Detection: {entry.profiles.earlyDet ? 'ACTIVE' : 'INACTIVE'}</li>
+                                            <li>Guidance: {entry.profiles.guidance ? 'ACTIVE' : 'INACTIVE'}</li>
+                                            <li>Financial Barrier: {entry.barriers.cost ? 'ON' : 'OFF'}</li>
+                                            <li>Digital Barrier: {entry.barriers.digital ? 'ON' : 'OFF'}</li>
+                                            <li>Distrust Barrier: {entry.barriers.trust ? 'ON' : 'OFF'}</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-12 mb-8">
+                                    <div>
+                                        <h3 className="text-[10px] font-black uppercase text-slate-400 mb-3">Top Theoretical Drivers</h3>
+                                        <ul className="text-sm space-y-2">
+                                            {entry.results.topDrivers.map(driver => (
+                                                <li key={driver.label}><strong>{driver.label}</strong>: {driver.value}%</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-[10px] font-black uppercase text-slate-400 mb-3">Date Saved</h3>
+                                        <p className="text-sm font-semibold">{entry.date}</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 border-t border-slate-200 pt-8">
+                                    <h3 className="text-xs font-black uppercase text-slate-400 mb-4">Evidence Synthesis</h3>
+                                    <div className="rounded-3xl border border-slate-200 p-6 bg-slate-50 text-sm leading-relaxed">
+                                        {entry.results.narrative}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const DirectionStep = ({ number, text }) => (
+            <div className="flex gap-3">
+                <span className="text-xs text-purple-600 bg-purple-50 w-6 h-6 rounded-full flex items-center justify-center shrink-0 font-black">{number}</span>
+                <p className="text-xs text-slate-500">{text}</p>
+            </div>
+        );
+
+        const ProfileBtn = ({ label, active, onClick, icon }) => (
+            <button onClick={onClick} className={`w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all font-bold text-[10px] uppercase ${active ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'}`}>
+                <div className="flex items-center gap-2"><i data-lucide={icon} className="w-3.5 h-3.5 opacity-50"></i> {label}</div>
+                <span className={`text-[8px] px-1 rounded border ${active ? 'bg-white/10 text-white border-white/20' : 'bg-slate-50 text-slate-300 border-slate-200'}`}>{active ? 'ON' : 'OFF'}</span>
+            </button>
+        );
+
+        const ResultCard = ({ label, val }) => (
+            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                <span className="text-[9px] font-black text-slate-400 uppercase block mb-1">{label}</span>
+                <p className="text-xl font-black text-slate-800 leading-none">{val || '---'}</p>
+            </div>
+        );
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Dashboard />);
+    </script>
+<script>
+(function() {
+  var src = document.getElementById('app-source').textContent;
+  var result = Babel.transform(src, {
+    presets: [[Babel.availablePresets['react'], { runtime: 'classic' }], Babel.availablePresets['env']]
+  });
+  var s = document.createElement('script');
+  s.textContent = result.code;
+  document.body.appendChild(s);
+})();
+</script>
+</body>
+</html>
