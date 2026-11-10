@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bridgewell Decision Hub | ALH 4105</title>
+<style>
+:root{--ink:#1c1530;--muted:#5b536e;--bg:#f6f4fa;--card:#fff;--line:#d9d3e6;--brand:#2d0052;--accent:#6b2fa8;--warn:#8a4b00;--warnbg:#fff4e0;--ok:#145c2e;--okbg:#e6f5ec;--bad:#9b1c1c}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--brand);color:#fff;padding:20px 16px}
+header .in,main{max-width:980px;margin:0 auto}
+header h1{margin:0;font-size:1.5rem}
+header p{margin:4px 0 0;opacity:.9}
+main{padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 16px}
+h2{font-size:1.2rem;margin:0 0 8px}
+h3{font-size:1.02rem;margin:16px 0 6px}
+label{display:block;font-weight:600;margin:12px 0 4px}
+.opt label,.chk label{display:inline;font-weight:400}
+input[type=text],select,textarea{width:100%;padding:8px;border:1px solid #8d84a3;border-radius:6px;font:inherit;background:#fff;color:var(--ink)}
+textarea{min-height:76px}
+:focus-visible{outline:3px solid #ffbf47;outline-offset:2px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.lever{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:8px 0}
+.lever b{display:block}.lever small{color:var(--muted)}
+.chk{display:block;margin:4px 0}
+.btn{display:inline-block;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:10px 16px;font:inherit;font-weight:600;cursor:pointer;margin:4px 8px 4px 0;text-decoration:none}
+.btn.alt{background:#fff;color:var(--accent);border:2px solid var(--accent)}
+.btn.small{padding:4px 10px;font-size:.9rem}
+.notice{background:#efe9fa;border-left:4px solid var(--accent);padding:10px 12px;border-radius:6px;margin:10px 0}
+.flag{background:var(--warnbg);border-left:4px solid var(--warn);padding:8px 12px;margin:8px 0;border-radius:6px}
+.err{color:var(--bad);font-weight:600;margin:8px 0}
+.ok{background:var(--okbg);border-left:4px solid var(--ok);padding:8px 12px;border-radius:6px}
+.ev{border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:8px;padding:10px 12px;margin:10px 0;background:#fcfbff}
+.ev h4{margin:0 0 4px;font-size:1rem}
+.tag{display:inline-block;font-size:.75rem;font-weight:700;padding:1px 8px;border-radius:99px;background:#e3d9f5;margin-right:6px}
+.tag.g{background:#ffe2b8}
+.cite{font-size:.85rem;color:var(--muted)}
+.cite a{color:var(--accent)}
+.mods{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.mods a{display:block;border:1px solid var(--line);background:#fff;border-radius:8px;padding:12px;text-decoration:none;color:var(--ink)}
+.mods a b{color:var(--accent)}
+.entry{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:10px 0;background:#fff}
+.entry dl{margin:6px 0}.entry dt{font-weight:700;margin-top:4px}.entry dd{margin:0 0 0 12px}
+.print-only{display:none}
+@media print{header,.noprint,.btn{display:none!important}.print-only{display:block}body{background:#fff}.card{border:0;padding:0}}
+</style>
+</head>
+<body>
+<header><div class="in"><h1>Bridgewell Decision Hub</h1><p>ALH 4105 · Practice the reasoning, check the evidence, log your decision.</p></div></header>
+<main id="app"></main>
+<noscript><p style="padding:16px">This tool needs JavaScript turned on.</p></noscript>
+<script>
+(function(){
+"use strict";
+
+/* ---------- helpers ---------- */
+function h(tag,attrs){
+  var el=document.createElement(tag);
+  if(attrs){for(var k in attrs){
+    if(k==="class")el.className=attrs[k];
+    else if(k==="text")el.textContent=attrs[k];
+    else if(k.indexOf("on")===0)el.addEventListener(k.slice(2),attrs[k]);
+    else if(attrs[k]===true)el.setAttribute(k,"");
+    else if(attrs[k]!==false&&attrs[k]!=null)el.setAttribute(k,attrs[k]);
+  }}
+  for(var i=2;i<arguments.length;i++){var c=arguments[i];if(c==null)continue;el.appendChild(typeof c==="string"?document.createTextNode(c):c);}
+  return el;
+}
+var uid=0;function nid(p){uid++;return p+uid;}
+function lsGet(k){try{return window.localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{window.localStorage.setItem(k,v);return true;}catch(e){return false;}}
+
+/* ---------- sources (all retrieved from PubMed) ---------- */
+var SRC={
+armitage:{y:2001,c:"Armitage, C. J., & Conner, M. (2001). Efficacy of the theory of planned behaviour: A meta-analytic review. British Journal of Social Psychology, 40(4), 471–499.",doi:"10.1348/014466601164939"},
+rich:{y:2015,c:"Rich, A., Brandes, K., Mullan, B., & Hagger, M. S. (2015). Theory of planned behavior and adherence in chronic illness: A meta-analysis. Journal of Behavioral Medicine, 38(4), 673–688.",doi:"10.1007/s10865-015-9644-3"},
+hagger:{y:2022,c:"Hagger, M. S., Cheung, M. W.-L., Ajzen, I., & Hamilton, K. (2022). Perceived behavioral control moderating effects in the theory of planned behavior: A meta-analysis. Health Psychology, 41(2), 155–167.",doi:"10.1037/hea0001153"},
+ritchie:{y:2020,c:"Ritchie, D., Van den Broucke, S., & Van Hal, G. (2020). The health belief model and theory of planned behavior applied to mammography screening: A systematic review and meta-analysis. Public Health Nursing, 38(3), 482–492.",doi:"10.1111/phn.12842"},
+hamilton:{y:2020,c:"Hamilton, K., van Dongen, A., & Hagger, M. S. (2020). An extended theory of planned behavior for parent-for-child health behaviors: A meta-analysis. Health Psychology, 39(10), 863–878.",doi:"10.1037/hea0000940"},
+wallerstein:{y:1992,c:"Wallerstein, N. (1992). Powerlessness, empowerment, and health: Implications for health promotion programs. American Journal of Health Promotion, 6(3), 197–205.",doi:"10.4278/0890-1171-6.3.197"},
+golden:{y:2012,c:"Golden, S. D., & Earp, J. A. L. (2012). Social ecological approaches to individuals and their contexts: Twenty years of Health Education & Behavior health promotion interventions. Health Education & Behavior, 39(3), 364–372.",doi:"10.1177/1090198111418634"},
+laveist:{y:2009,c:"LaVeist, T. A., Isaac, L. A., & Williams, K. P. (2009). Mistrust of health care organizations is associated with underutilization of health services. Health Services Research, 44(6), 2093–2105.",doi:"10.1111/j.1475-6773.2009.01017.x"},
+smith:{y:2024,c:"Smith, E. A., Hubbard, S. J., Freeman, S. C., March, D. S., Wells, M., Saeedi, E., Haddon, L., Khunti, K., & Gray, L. J. (2024). The effectiveness of delivery modalities of non-pharmacological diabetes prevention programs: A systematic review and component network meta-analysis. Diabetes & Metabolic Syndrome, 18(10), 103136.",doi:"10.1016/j.dsx.2024.103136"},
+mudaliar:{y:2016,c:"Mudaliar, U., Zabetian, A., Goodman, M., Echouffo-Tcheugui, J. B., Albright, A. L., Gregg, E. W., & Ali, M. K. (2016). Cardiometabolic risk factor changes observed in diabetes prevention programs in US settings: A systematic review and meta-analysis. PLoS Medicine, 13(7), e1002095.",doi:"10.1371/journal.pmed.1002095"},
+knowler:{y:2002,c:"Knowler, W. C., Barrett-Connor, E., Fowler, S. E., Hamman, R. F., Lachin, J. M., Walker, E. A., & Nathan, D. M. (2002). Reduction in the incidence of type 2 diabetes with lifestyle intervention or metformin. New England Journal of Medicine, 346(6), 393–403.",doi:"10.1056/NEJMoa012512"},
+valdez:{y:2010,c:"Valdez, R., Yoon, P. W., Qureshi, N., Green, R. F., & Khoury, M. J. (2010). Family history in public health practice: A genomic tool for disease prevention and health promotion. Annual Review of Public Health, 31, 69–87.",doi:"10.1146/annurev.publhealth.012809.103621"},
+welch:{y:2010,c:"Welch, H. G., & Black, W. C. (2010). Overdiagnosis in cancer. Journal of the National Cancer Institute, 102(9), 605–613.",doi:"10.1093/jnci/djq099"}
+};
+var CHECK="Check the current guideline for your population before citing.";
+var CARDS={
+armitage:{t:"TPB explains part of behavior, not all of it",k:"Foundational",s:"armitage",found:"Across 185 studies, the theory accounted for 27% of the variance in behavior and 39% in intention. Perceived behavioral control added predictive value; subjective norm was generally a weak predictor of intention.",lim:"Intention leaves most behavior unexplained. Fit was better when behavior was self-reported (R² .31) than objectively observed (R² .21)."},
+rich:{t:"Intention and follow-through can be far apart",k:"Foundational",s:"rich",found:"In 27 studies of adherence to treatment in chronic illness, the theory explained 33% of the variance in intention but only 9% in adherence behavior.",lim:"Effect sizes were small, especially for the intention–behavior link. Chronic-illness adherence only."},
+hagger:{t:"Perceived control changes how intention turns into action",k:"Foundational",s:"hagger",found:"In 39 health-behavior studies (n = 13,121), perceived behavioral control moderated the intention–behavior relation, but not the attitude–intention or norm–intention relations.",lim:"Substantial unexplained variation between studies; the effect may not generalize to every population."},
+ritchie:{t:"HBM vs. TPB in screening: cues to action stood out",k:"Foundational",s:"ritchie",found:"In mammography screening studies, HBM explained 25%–89% of variance (mean R = .55); TPB explained 16%–81% (mean R = .24 for screening behavior, .46 for intention). “Cue to action” had the largest effect (mean OR 1.80).",lim:"Mammography only. Most studies tested single constructs and reported inconsistently, so treat the ranges as wide."},
+hamilton:{t:"When the behavior is done for someone else",k:"Foundational",s:"hamilton",found:"In 46 studies of parents’ health behaviors for their children, attitudes, norms and perceived control predicted behavior through intention, and perceived control and planning also predicted behavior directly.",lim:"Parent-for-child behaviors only; mostly correlational data."},
+wallerstein:{t:"Powerlessness is a risk factor; empowerment can protect",k:"Foundational",s:"wallerstein",found:"This review links lack of control over one’s circumstances to disease risk and presents empowerment as a health-enhancing strategy, with an empowerment-education model for practitioners.",lim:"A 1992 narrative review. The author notes empowerment is harder to measure and evaluate than individual behaviors."},
+golden:{t:"Most programs still target individuals, not systems",k:"Foundational",s:"golden",found:"Of 157 intervention articles from 20 years of one health-education journal, most targeted individual and interpersonal factors rather than institutional, community or policy factors.",lim:"Reflects one journal’s articles. It describes what researchers studied, not what works best."},
+laveist:{t:"Mistrust is linked to missed follow-up",k:"Foundational",s:"laveist",found:"In a Baltimore household survey (n = 401; 327 followed up), higher mistrust of health care organizations predicted not taking medical advice, missing follow-up appointments, postponing care and not filling prescriptions.",lim:"One city and a telephone survey; an association, not proof of cause. Mistrust was not significantly linked to failing to get needed care."},
+smith:{t:"Delivery mode matters for prevention programs",k:"Intervention",s:"smith",found:"In 50 studies (29,286 participants) of diabetes prevention programs, individual in-person delivery was associated with a greater reduction in diabetes incidence (HR 0.66) and group in-person delivery with greater weight and HbA1c reductions than usual care. The authors call for improving digital programs.",lim:"Comparisons across studies, not head-to-head trials. Digital programs may have improved since these studies. "+CHECK},
+mudaliar:{t:"DPP-style programs outside trials",k:"Intervention",s:"mudaliar",found:"In 44 US studies (8,995 participants), community, clinical and online DPP-style programs averaged −3.77 kg weight and −4.29 mmHg systolic blood pressure. Programs with maintenance sessions achieved an additional −1.66 kg.",lim:"Mostly before-and-after designs, varied programs, and about 9 months of follow-up on average."},
+knowler:{t:"The original DPP trial",k:"Foundational",s:"knowler",found:"Among 3,234 adults with elevated glucose, lifestyle modification (7% weight loss, 150 minutes of activity a week) reduced diabetes incidence by 58% and metformin by 31% compared with placebo over about 2.8 years.",lim:"Trial conditions, average age 51, BMI 34. It shows what is possible under support, not what a community program will achieve. "+CHECK},
+valdez:{t:"Family history as a public-health tool",k:"Foundational",s:"valdez",found:"Family history is a risk factor for cancer, cardiovascular disease and diabetes, and guidelines use it to assess risk, start interventions and motivate behavior change. The authors argue its public-health use should be evaluated (analytic validity, clinical validity, clinical utility, and ethical, legal and social issues).",lim:"A 2010 review; standardized collection and decision-support tools have developed since. "+CHECK},
+welch:{t:"Screening can also cause harm (overdiagnosis)",k:"Guideline-linked",s:"welch",found:"From randomized trials, overdiagnosis was estimated at about 25% of mammography-detected breast cancers, 50% of chest X-ray/sputum-detected lung cancers and 60% of PSA-detected prostate cancers. The authors say people should be told the trade-offs of early detection.",lim:"Cancer screening, 2010. Cardiometabolic screening has different trade-offs, so use this as an analogy only. "+CHECK}
+};
+
+/* ---------- case data (from the course Bridgewell modules) ---------- */
+var CASES=[
+ ["Carmen Rivera","Unmanaged hypertension and diabetes; meets criteria for DPP referral but has not engaged"],
+ ["DeShawn","Undiagnosed cardiovascular risk"],
+ ["Imani","In her prenatal window"],
+ ["Marco","Metabolic trajectory"],
+ ["Lucia","Deferred self-care"]
+];
+var STAGES=["Prenatal","Infancy / childhood","Adolescence","Young adult","Adult","Older adult"];
+
+/* ---------- module tasks ---------- */
+var LEVELS=["Low","Moderate","High"];
+var TPB=[["Instrumental attitude","Belief that the behavior leads to a health outcome."],["Affective attitude","Emotional response to the behavior (pleasant or unpleasant)."],["Injunctive norms","Perceived pressure from important others to do it."],["Descriptive norms","Perception of whether others actually do it."],["Self-efficacy / perceived control","How easy or hard the behavior feels to perform."]];
+var HBM=[["Susceptibility","Belief about the likelihood of getting the condition."],["Severity","Belief about how serious it is."],["Benefits","Perceived value of the action in reducing the threat."],["Barriers","Practical and psychological costs of acting."],["Cues to action","Triggers that prompt action (symptoms, reminders, media)."]];
+var CE=[["Awareness","Shared understanding of the social and political causes of health problems."],["Leadership","Local skills and people who can drive decisions."],["Mobilization","Securing resources and community-wide involvement."],["Structure","Formal groups and networks for sustained action."],["Collective action","Joint efforts to change environments or policies."]];
+
+var STAGES_P=["Identification","Screening / assessment","Referral","Follow-up support"];
+var PBARRIERS=["Cost","Transportation","Digital access or skills","Mistrust of health care","Language","Food insecurity","Work or caregiving schedule","No formal agreement or contact between partners","Person not aware of the program"];
+var PARTNERS=["Health system / clinic","Community center","Faith community","School","Employer","Food bank / pantry","Local government / health department","Payer / insurer","Community health worker / navigator","Pharmacy"];
+var MODS={
+1:{n:"Health behavior theories",lens:"Theory lens: TPB or HBM",cards:["armitage","rich","hagger","ritchie","hamilton"],
+ intro:"Pick one behavior for one person or population and look at it through a theory lens. Rate each construct, then decide where an intervention should start.",
+ prompts:["Which construct is weakest in this case, and what evidence from the person’s situation (not just the theory) tells you that?","What does this theory not explain about this situation? Name one factor outside the theory."]},
+2:{n:"Partners and pathways",lens:"Lens: barriers across the prevention pathway",cards:["laveist","wallerstein","golden"],
+ intro:"Walk the prevention pathway one stage at a time. At each stage, name the biggest barrier for your case and the partner who could realistically close it. Then decide who is being left behind.",
+ prompts:["Which stage of the pathway breaks first for this case, and which partner controls that barrier? What would that partner need to agree to?","Who is being left behind by this pathway as you have mapped it, and why? What type of partner would reach them?"]},
+3:{n:"Risk stratification and barriers",lens:"Lens: barriers and equity",cards:["laveist","smith","golden"],
+ intro:"Choose the barriers that apply to this case and how your program would be delivered. Then decide who is most at risk of being missed and why.",
+ prompts:["Who is most at risk of being missed by this program, and why? Use the barriers you selected.","What would you change about delivery so that person is reached?"]},
+4:{n:"Screening and early detection",lens:"Lens: screening decision",cards:["welch","valdez","knowler"],
+ intro:"Choose a screening approach, name the benefits and harms you would weigh, and check whether a real follow-up pathway exists.",
+ prompts:["Why is this the right screening approach for this person or population, and who decides?","What happens to someone with a positive result in your pathway, and what could stop them from getting there?"]},
+5:{n:"Genetics, development and environment",lens:"Lens: family history and context",cards:["valdez","knowknowler_placeholder","mudaliar"],
+ intro:"Treat family history as a modifier. Decide what it changes about screening, prevention or referral, and name the environmental factors that interact with it.",
+ prompts:["What does the family history change about when, how often or how this person should be screened, and why?","Which environmental factor could make the genetic risk better or worse, and what could the plan do about it?"]}
+};
+MODS[5].cards=["valdez","knowler","mudaliar"];
+
+/* ---------- state ---------- */
+var STORE="bridgewell_hub_v2_log";
+var NAMEKEY="bridgewell_hub_v2_name";
+var log=[];try{log=JSON.parse(lsGet(STORE)||"[]");if(!Array.isArray(log))log=[];}catch(e){log=[];}
+var studentName=lsGet(NAMEKEY)||"";
+function persist(){var ok=lsSet(STORE,JSON.stringify(log));lsSet(NAMEKEY,studentName);return ok;}
+
+var app=document.getElementById("app");
+function param(){var m=/[?&]m=(\d+)/.exec(window.location.search);return m?parseInt(m[1],10):0;}
+
+/* ---------- views ---------- */
+function home(){
+  app.textContent="";
+  var c=h("div",{class:"card"},h("h2",{text:"Choose your module"}),
+    h("p",{text:"Your instructor’s module page links straight to the right task. You can also pick one here."}));
+  var g=h("div",{class:"mods"});
+  Object.keys(MODS).forEach(function(k){g.appendChild(h("a",{href:"?m="+k},h("b",{text:"Module "+k}),h("div",{text:MODS[k].n})));});
+  c.appendChild(g);
+  app.appendChild(c);
+  app.appendChild(aboutCard());
+  app.appendChild(logCard());
+}
+function aboutCard(){
+  return h("div",{class:"card"},h("h2",{text:"How this works"}),
+    h("p",{text:"This is a reasoning space, not a calculator. Nothing here is scored. You make choices, read the evidence behind them, and write down your decision and why."}),
+    h("div",{class:"notice"},h("b",{text:"Check your sources. "}),"Evidence cards can be several years old. Before you cite anything from a card, look for newer data or guidelines. Each log entry asks you to record that check."),
+    h("div",{class:"notice"},h("b",{text:"Save your work. "}),"Your log is stored only in this browser. Switching devices or clearing browser data erases it. Export your log as a file or PDF regularly."));
+}
+function select(id,opts,val){
+  var s=h("select",{id:id});
+  s.appendChild(h("option",{value:"",text:"Select…"}));
+  opts.forEach(function(o){var v=Array.isArray(o)?o[0]:o;var op=h("option",{value:v,text:v});if(v===val)op.selected=true;s.appendChild(op);});
+  return s;
+}
+function levers(prefix,list){
+  var wrap=h("div");
+  list.forEach(function(l,i){
+    var id=prefix+i;
+    wrap.appendChild(h("div",{class:"lever"},h("b",{text:l[0]}),h("small",{text:l[1]}),
+      h("label",{for:id,text:"Your rating for this case"}),select(id,LEVELS)));
+  });
+  return wrap;
+}
+function checks(name,list){
+  var w=h("div");
+  list.forEach(function(t){var id=nid("c");w.appendChild(h("div",{class:"chk"},h("input",{type:"checkbox",id:id,name:name,value:t}),h("label",{for:id,text:" "+t})));});
+  return w;
+}
+function val(id){var e=document.getElementById(id);return e?e.value.trim():"";}
+function checked(name){var o=[];document.querySelectorAll('input[name="'+name+'"]:checked').forEach(function(e){o.push(e.value);});return o;}
+function radioVal(name){var e=document.querySelector('input[name="'+name+'"]:checked');return e?e.value:"";}
+
+function moduleView(m){
+  var M=MODS[m];app.textContent="";
+  var f=h("div",{class:"card"});
+  f.appendChild(h("p",{class:"noprint"},h("a",{href:"?",text:"← All modules"})));
+  f.appendChild(h("h2",{text:"Module "+m+": "+M.n}));
+  f.appendChild(h("p",{text:M.intro}));
+  f.appendChild(h("div",{class:"cite",text:M.lens}));
+
+  f.appendChild(h("h3",{text:"1. Set the scene"}));
+  var caseOpts=CASES.map(function(c){return c[0]+" (Rivera-Washington family) — "+c[1];});
+  caseOpts.push("My own population");
+  f.appendChild(h("label",{for:"case",text:"Who or what is this decision about?"}));f.appendChild(select("case",caseOpts));
+  f.appendChild(h("label",{for:"popnote",text:"If you chose your own population, describe it in one line"}));f.appendChild(h("input",{type:"text",id:"popnote"}));
+  f.appendChild(h("label",{for:"stage",text:"Life stage"}));f.appendChild(select("stage",STAGES));
+  f.appendChild(h("label",{for:"concern",text:"Behavior or health concern in focus"}));f.appendChild(h("input",{type:"text",id:"concern"}));
+
+  f.appendChild(h("h3",{text:"2. Make your choices"}));
+  if(m===1){
+    var thSel=select("theory",["Theory of Planned Behavior","Health Belief Model"]);
+    f.appendChild(h("label",{for:"theory",text:"Theory lens"}));f.appendChild(thSel);
+    var tl=h("div",{id:"tl"});f.appendChild(tl);
+    var draw=function(){var t=thSel.value;tl.textContent="";
+      if(!t){tl.appendChild(h("p",{class:"cite",text:"Choose a theory to rate its constructs."}));return;}
+      tl.appendChild(levers("lv",t==="Health Belief Model"?HBM:TPB));
+      var list=(t==="Health Belief Model"?HBM:TPB).map(function(x){return x[0];});
+      tl.appendChild(h("label",{for:"first",text:"Which construct would you target first?"}));tl.appendChild(select("first",list));};
+    thSel.addEventListener("change",draw);
+    draw();
+    f.appendChild(h("label",{for:"structural",text:"Is there a cost, transportation, access or policy barrier in this case?"}));
+    f.appendChild(select("structural",["Yes","No","Not sure"]));
+  }
+  if(m===2){
+    STAGES_P.forEach(function(st,k){
+      f.appendChild(h("div",{class:"lever"},h("b",{text:st}),
+        h("label",{for:"pb"+k,text:"Biggest barrier at this stage"}),select("pb"+k,PBARRIERS),
+        h("label",{for:"pp"+k,text:"Partner who could close it"}),select("pp"+k,PARTNERS)));
+    });
+    f.appendChild(h("label",{for:"power",text:"Who holds the power to remove the biggest barrier overall?"}));f.appendChild(h("input",{type:"text",id:"power"}));
+  }
+  if(m===3){
+    f.appendChild(h("label",{text:"Barriers that apply to this case"}));
+    f.appendChild(checks("barriers",["Cost","Transportation","Digital access or skills","Mistrust of health care","Language","Food insecurity","Work or caregiving schedule"]));
+    f.appendChild(h("label",{for:"delivery",text:"How would your program be delivered?"}));
+    f.appendChild(select("delivery",["In person only","Digital only","Hybrid (in person plus digital)"]));
+  }
+  if(m===4){
+    f.appendChild(h("label",{for:"approach",text:"Screening approach"}));
+    f.appendChild(select("approach",["Screen everyone in the group","Screen only people with risk factors","Start screening earlier based on family history","Do not screen; focus on prevention"]));
+    f.appendChild(h("label",{text:"Benefits and harms you are weighing"}));
+    f.appendChild(checks("weigh",["Earlier treatment","False positives","Overdiagnosis","Anxiety or stigma","Cost to the person","Access to follow-up care"]));
+    f.appendChild(h("label",{text:"What your pathway includes"}));
+    f.appendChild(checks("path",["A named person who contacts people with positive results","A plan for transportation or cost","A confirmed program to refer to","Results explained in the person’s language","Follow-up check that the person attended"]));
+  }
+  if(m===5){
+    f.appendChild(h("label",{for:"fh",text:"Family history in this case"}));
+    f.appendChild(select("fh",["None known","Second-degree relative(s) affected","First-degree relative(s) affected","Multiple generations affected"]));
+    f.appendChild(h("label",{text:"Environmental or social factors that interact with it"}));
+    f.appendChild(checks("env",["Food insecurity","Chronic stress","Limited access to care","Neighborhood safety or built environment","Occupational exposure","Prenatal environment"]));
+    f.appendChild(h("label",{text:"What the family history changes in your plan"}));
+    f.appendChild(checks("changes",["Start screening earlier","Screen more often","Genetic counseling or specialist referral","Outreach to at-risk relatives","Tailored prevention counseling","No change"]));
+  }
+
+  f.appendChild(h("button",{class:"btn alt noprint",type:"button",id:"checkbtn",text:"Check my choices against the evidence",onclick:function(){showEvidence(m);}}));
+  f.appendChild(h("div",{id:"evidence"}));
+  app.appendChild(f);
+  app.appendChild(entryCard(m));
+  app.appendChild(logCard());
+  app.appendChild(aboutCard());
+}
+
+function flagsFor(m){
+  var fl=[];
+  if(m===1){
+    var t=val("theory"),st=val("structural"),first=val("first");
+    var lv=document.querySelectorAll('select[id^="lv"]'),allHigh=lv.length>0,anyBlank=false;
+    lv.forEach(function(s){if(s.value!=="High")allHigh=false;if(!s.value)anyBlank=true;});
+    if(st==="Yes"&&t)fl.push("You noted a cost, access or policy barrier. TPB and HBM mostly describe individual beliefs. Ask what a systems-level lens would add (see the Golden & Earp card).");
+    if(allHigh&&!anyBlank)fl.push("Every construct is rated High, yet you are asking what to target. If beliefs are all favorable, the gap may be intention-to-action. See the Rich and Hagger cards.");
+    if(t==="Theory of Planned Behavior"&&first==="Self-efficacy / perceived control")fl.push("You chose perceived control first. The Hagger card suggests it shapes whether intention turns into behavior; say how you would build it.");
+    if(t==="Health Belief Model"&&first==="Cues to action")fl.push("Cues to action had the largest effect in the Ritchie screening review. That review covered mammography only, so say why it applies here.");
+  }
+  if(m===2){
+    var bs=[],ps=[];
+    for(var k=0;k<4;k++){bs.push(val("pb"+k));ps.push(val("pp"+k));}
+    var blanks=ps.filter(function(x){return !x;}).length+bs.filter(function(x){return !x;}).length;
+    if(blanks)fl.push("You left "+blanks+" barrier or partner choice(s) blank. A pathway is only as strong as its weakest stage.");
+    var cnt={};ps.forEach(function(x){if(x)cnt[x]=(cnt[x]||0)+1;});
+    Object.keys(cnt).forEach(function(x){if(cnt[x]>=3)fl.push("You chose "+x+" for "+cnt[x]+" of 4 stages. One partner rarely holds the access and trust needed at every stage; who else could share the load?");});
+    for(var q=0;q<4;q++){
+      if(bs[q]==="Mistrust of health care"&&(ps[q]==="Health system / clinic"||ps[q]==="Payer / insurer"))fl.push("At \""+STAGES_P[q]+"\" the barrier is mistrust, but the partner is part of the system that is mistrusted. Who holds trust here? (See the LaVeist card.)");
+      if(bs[q]==="No formal agreement or contact between partners"&&ps[q]==="Food bank / pantry")fl.push("At \""+STAGES_P[q]+"\" the barrier is a missing link between partners; a partner on one side cannot fix that alone. Who connects them?");
+    }
+    var anyComm=ps.some(function(x){return x&&x!=="Health system / clinic"&&x!=="Payer / insurer";});
+    if(ps.some(function(x){return x;})&&!anyComm)fl.push("All your partners are health-sector. Which community partner holds trust and access the clinic does not? (See the Golden & Earp card.)");
+  }
+  if(m===3){
+    var B=checked("barriers"),d=val("delivery");
+    if(B.indexOf("Digital access or skills")>-1&&d==="Digital only")fl.push("You selected a digital-access barrier but chose digital-only delivery. Reconcile these (see the Smith card).");
+    if(B.indexOf("Mistrust of health care")>-1&&d==="Digital only")fl.push("Mistrust is selected and delivery is digital-only. Who is the trusted face of the program? (See the LaVeist card.)");
+    if((B.indexOf("Cost")>-1||B.indexOf("Transportation")>-1)&&d==="In person only")fl.push("Cost or transportation is a barrier and delivery is in person only. What removes that barrier?");
+    if(B.length===0)fl.push("You selected no barriers. Which ones could be present but invisible in your data?");
+  }
+  if(m===4){
+    var a=val("approach"),pth=checked("path"),w=checked("weigh");
+    if(a&&a!=="Do not screen; focus on prevention"&&pth.indexOf("A confirmed program to refer to")<0)fl.push("You are screening without a confirmed program to refer to. What happens to a positive result?");
+    if(a&&a!=="Do not screen; focus on prevention"&&w.indexOf("False positives")<0&&w.indexOf("Overdiagnosis")<0)fl.push("You did not weigh screening harms. See the Welch & Black card, then say whether harms apply here.");
+    if(a==="Start screening earlier based on family history"&&val("fhnote")==="")fl.push("Earlier screening based on family history needs a documented family history. How will it be collected and checked? (See the Valdez card.)");
+  }
+  if(m===5){
+    var f=val("fh"),c=checked("changes");
+    if(f==="None known"&&c.length>0&&c.indexOf("No change")<0)fl.push("No family history is known, yet you changed the plan. What is driving the change?");
+    if((f==="First-degree relative(s) affected"||f==="Multiple generations affected")&&c.indexOf("No change")>-1)fl.push("Strong family history but “no change.” Say why that is reasonable.");
+    if(f&&f!=="None known"&&checked("env").length===0)fl.push("You named no environmental factors. Family history shares genes and environments; which shared environment matters here?");
+  }
+  return fl;
+}
+
+function showEvidence(m){
+  var box=document.getElementById("evidence");box.textContent="";
+  var fl=flagsFor(m);
+  box.appendChild(h("h3",{text:"Things to consider"}));
+  if(!fl.length)box.appendChild(h("div",{class:"ok",text:"No mismatches flagged. That does not mean the choices are right; check the evidence below."}));
+  fl.forEach(function(t){box.appendChild(h("div",{class:"flag",text:t}));});
+  box.appendChild(h("h3",{text:"Evidence cards"}));
+  box.appendChild(h("p",{class:"cite",text:"Each card summarizes one published source. Read the limits, and check for newer data before you cite."}));
+  MODS[m].cards.forEach(function(id){
+    var c=CARDS[id],s=SRC[c.s];
+    box.appendChild(h("div",{class:"ev"},
+      h("h4",{},h("span",{class:"tag"+(c.k==="Guideline-linked"?" g":""),text:c.k}),c.t),
+      h("div",{},h("b",{text:"What it found: "}),c.found),
+      h("div",{},h("b",{text:"Limits: "}),c.lim),
+      h("div",{class:"cite"},s.c+" ",h("a",{href:"https://doi.org/"+s.doi,target:"_blank",rel:"noopener",text:"doi:"+s.doi}),h("span",{text:"  (source year "+s.y+")"}))));
+  });
+  var first=box.querySelector("h3");if(first&&first.scrollIntoView)first.scrollIntoView({behavior:"smooth"});
+}
+
+function entryCard(m){
+  var M=MODS[m];
+  var c=h("div",{class:"card"});
+  c.appendChild(h("h2",{text:"3. Write your decision"}));
+  c.appendChild(h("label",{for:"decision",text:"Your decision (what you would do, in 2–3 sentences)"}));c.appendChild(h("textarea",{id:"decision"}));
+  M.prompts.forEach(function(q,i){c.appendChild(h("label",{for:"p"+i,text:q}));c.appendChild(h("textarea",{id:"p"+i}));});
+  if(m===4){c.appendChild(h("label",{for:"fhnote",text:"If you are using family history, how is it documented?"}));c.appendChild(h("input",{type:"text",id:"fhnote"}));}
+  c.appendChild(h("h3",{text:"Currency check (required)"}));
+  c.appendChild(h("p",{class:"cite",text:"Evidence ages. Record what you used and whether you looked for something newer."}));
+  c.appendChild(h("label",{for:"cyear",text:"Year(s) of the evidence you used"}));c.appendChild(h("input",{type:"text",id:"cyear"}));
+  c.appendChild(h("div",{class:"opt"},h("b",{text:"Did you check for newer data or a current guideline? "}),
+    h("input",{type:"radio",name:"cver",id:"cy",value:"Yes"}),h("label",{for:"cy",text:" Yes   "}),
+    h("input",{type:"radio",name:"cver",id:"cn",value:"No"}),h("label",{for:"cn",text:" No"})));
+  c.appendChild(h("label",{for:"cfound",text:"What did you find, or why was a check not needed? (one or two sentences)"}));c.appendChild(h("textarea",{id:"cfound"}));
+  c.appendChild(h("div",{id:"err",class:"err",role:"alert"}));
+  c.appendChild(h("button",{class:"btn",type:"button",text:"Save to my log",onclick:function(){save(m);}}));
+  return c;
+}
+
+function labelFor(id){var e=document.querySelector('label[for="'+id+'"]');return e?e.textContent:id;}
+function gather(m){
+  var inputs=[];
+  function add(l,v){if(v&&(!Array.isArray(v)||v.length))inputs.push([l,Array.isArray(v)?v.join("; "):v]);}
+  add("Case",val("case"));add("Population note",val("popnote"));add("Life stage",val("stage"));add("Concern in focus",val("concern"));
+  if(m===1){add("Theory",val("theory"));
+    var cons=[];document.querySelectorAll('select[id^="lv"]').forEach(function(s){var b=s.parentNode.querySelector("b");cons.push((b?b.textContent:"")+": "+(s.value||"not rated"));});
+    add("Construct ratings",cons);add("Target first",val("first"));add("Structural barrier present",val("structural"));}
+  if(m===2){var pl=[];for(var k=0;k<4;k++)pl.push(STAGES_P[k]+": barrier = "+(val("pb"+k)||"blank")+"; partner = "+(val("pp"+k)||"blank"));
+    add("Pathway map",pl);add("Holds the power",val("power"));}
+  if(m===3){add("Barriers",checked("barriers"));add("Delivery",val("delivery"));}
+  if(m===4){add("Screening approach",val("approach"));add("Weighing",checked("weigh"));add("Pathway includes",checked("path"));add("Family history documentation",val("fhnote"));}
+  if(m===5){add("Family history",val("fh"));add("Environmental factors",checked("env"));add("Plan changes",checked("changes"));}
+  return inputs;
+}
+function save(m){
+  var err=document.getElementById("err");err.textContent="";
+  var miss=[];
+  if(!val("case"))miss.push("who or what the decision is about");
+  if(!val("stage"))miss.push("life stage");
+  if(!val("concern"))miss.push("behavior or health concern");
+  if(val("decision").length<30)miss.push("your decision (at least a couple of sentences)");
+  MODS[m].prompts.forEach(function(q,i){if(val("p"+i).length<30)miss.push("an answer to reasoning question "+(i+1));});
+  if(!val("cyear"))miss.push("the year(s) of your evidence");
+  if(!radioVal("cver"))miss.push("whether you checked for newer data");
+  if(val("cfound").length<10)miss.push("what you found in the currency check");
+  if(!document.getElementById("evidence").firstChild)miss.push("a look at the evidence cards (use the “Check my choices” button)");
+  if(miss.length){err.textContent="Before saving, please add: "+miss.join("; ")+".";err.scrollIntoView&&err.scrollIntoView({block:"center"});return;}
+  var pr=MODS[m].prompts.map(function(q,i){return {q:q,a:val("p"+i)};});
+  log.push({id:Date.now()+"-"+log.length,m:m,mname:MODS[m].n,ts:new Date().toISOString(),inputs:gather(m),flags:flagsFor(m),decision:val("decision"),prompts:pr,
+    currency:{year:val("cyear"),verified:radioVal("cver"),found:val("cfound")}});
+  var ok=persist();
+  var st=h("div",{class:"ok",role:"status",text:ok?"Saved to your log below. Export it before you close this tab.":"Saved for this session only: your browser blocked storage, so export your log now."});
+  err.parentNode.insertBefore(st,err);
+  renderLog();
+}
+
+function logCard(){var c=h("div",{class:"card",id:"logcard"});c.appendChild(h("div",{id:"loginner"}));setTimeout(renderLog,0);return c;}
+function renderLog(){
+  var box=document.getElementById("loginner");if(!box)return;box.textContent="";
+  box.appendChild(h("h2",{text:"My Decision Log ("+log.length+(log.length===1?" entry":" entries")+")"}));
+  box.appendChild(h("label",{for:"sname",class:"noprint",text:"Your name (needed for export)"}));
+  var ni=h("input",{type:"text",id:"sname",class:"noprint"});ni.value=studentName;ni.addEventListener("input",function(){studentName=ni.value;persist();});box.appendChild(ni);
+  if(!log.length){box.appendChild(h("p",{text:"No entries yet. Complete a module task and save it here."}));return;}
+  log.forEach(function(e,i){
+    var dl=h("dl");
+    e.inputs.forEach(function(p){dl.appendChild(h("dt",{text:p[0]}));dl.appendChild(h("dd",{text:p[1]}));});
+    dl.appendChild(h("dt",{text:"Decision"}));dl.appendChild(h("dd",{text:e.decision}));
+    e.prompts.forEach(function(p){dl.appendChild(h("dt",{text:p.q}));dl.appendChild(h("dd",{text:p.a}));});
+    dl.appendChild(h("dt",{text:"Currency check"}));
+    dl.appendChild(h("dd",{text:"Evidence year(s): "+e.currency.year+". Checked for newer data: "+e.currency.verified+". "+e.currency.found}));
+    box.appendChild(h("div",{class:"entry"},h("b",{text:"Module "+e.m+": "+e.mname}),h("span",{class:"cite",text:"  "+new Date(e.ts).toLocaleString()}),dl,
+      h("button",{class:"btn alt small noprint",type:"button",text:"Delete this entry",onclick:function(){if(window.confirm("Delete this log entry?")){log.splice(i,1);persist();renderLog();}}})));
+  });
+  var bar=h("div",{class:"noprint"});
+  bar.appendChild(h("button",{class:"btn",type:"button",text:"Export as text file",onclick:exportText}));
+  bar.appendChild(h("button",{class:"btn alt",type:"button",text:"Print or save as PDF",onclick:function(){if(!studentName.trim()){window.alert("Add your name first.");return;}window.print();}}));
+  box.appendChild(bar);
+  box.appendChild(h("div",{class:"print-only",text:"Name: "+studentName+" · Printed "+new Date().toLocaleDateString()}));
+}
+function exportText(){
+  if(!studentName.trim()){window.alert("Add your name first.");return;}
+  var L=["BRIDGEWELL DECISION LOG — ALH 4105","Name: "+studentName,"Exported: "+new Date().toLocaleString(),"",
+    "Reminder: evidence cards may be several years old. Check for newer data before citing.",""];
+  log.forEach(function(e,i){
+    L.push("=== Entry "+(i+1)+" — Module "+e.m+": "+e.mname+" ("+new Date(e.ts).toLocaleString()+") ===");
+    e.inputs.forEach(function(p){L.push(p[0]+": "+p[1]);});
+    if(e.flags&&e.flags.length){L.push("Flags shown to student:");e.flags.forEach(function(f){L.push("  - "+f);});}
+    L.push("Decision: "+e.decision);
+    e.prompts.forEach(function(p){L.push(p.q);L.push("  "+p.a);});
+    L.push("Currency check: evidence year(s) "+e.currency.year+"; checked for newer data: "+e.currency.verified+"; "+e.currency.found);L.push("");
+  });
+  var blob=new Blob([L.join("\r\n")],{type:"text/plain"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download="Bridgewell_Decision_Log_"+studentName.trim().replace(/[^A-Za-z0-9]+/g,"_")+".txt";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+/* ---------- start ---------- */
+var m=param();
+if(MODS[m])moduleView(m);else home();
+window.__hub={log:function(){return log;}};
+})();
+</script>
+</body>
+</html>
