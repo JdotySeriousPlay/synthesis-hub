@@ -283,10 +283,13 @@ function flagsFor(m){
     if(blanks)fl.push("You left "+blanks+" barrier or partner choice(s) blank. A pathway is only as strong as its weakest stage.");
     var cnt={};ps.forEach(function(x){if(x)cnt[x]=(cnt[x]||0)+1;});
     Object.keys(cnt).forEach(function(x){if(cnt[x]>=3)fl.push("You chose "+x+" for "+cnt[x]+" of 4 stages. One partner rarely holds the access and trust needed at every stage; who else could share the load?");});
+    var mis=[],gap=[];
     for(var q=0;q<4;q++){
-      if(bs[q]==="Mistrust of health care"&&(ps[q]==="Health system / clinic"||ps[q]==="Payer / insurer"))fl.push("At \""+STAGES_P[q]+"\" the barrier is mistrust, but the partner is part of the system that is mistrusted. Who holds trust here? (See the LaVeist card.)");
-      if(bs[q]==="No formal agreement or contact between partners"&&ps[q]==="Food bank / pantry")fl.push("At \""+STAGES_P[q]+"\" the barrier is a missing link between partners; a partner on one side cannot fix that alone. Who connects them?");
+      if(bs[q]==="Mistrust of health care"&&(ps[q]==="Health system / clinic"||ps[q]==="Payer / insurer"))mis.push(STAGES_P[q]);
+      if(bs[q]==="No formal agreement or contact between partners"&&ps[q]==="Food bank / pantry")gap.push(STAGES_P[q]);
     }
+    if(mis.length)fl.push("At "+mis.join(", ")+" the barrier is mistrust, but the partner is part of the system that is mistrusted. Who holds trust here? (See the LaVeist card.)");
+    if(gap.length)fl.push("At "+gap.join(", ")+" the barrier is a missing link between partners; a partner on one side cannot fix that alone. Who connects them?");
     var anyComm=ps.some(function(x){return x&&x!=="Health system / clinic"&&x!=="Payer / insurer";});
     if(ps.some(function(x){return x;})&&!anyComm)fl.push("All your partners are health-sector. Which community partner holds trust and access the clinic does not? (See the Golden & Earp card.)");
   }
