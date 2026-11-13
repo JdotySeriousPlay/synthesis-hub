@@ -43,6 +43,19 @@ textarea{min-height:76px}
 .mods a b{color:var(--accent)}
 .entry{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:10px 0;background:#fff}
 .entry dl{margin:6px 0}.entry dt{font-weight:700;margin-top:4px}.entry dd{margin:0 0 0 12px}
+.prog{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px 16px;margin:0 0 16px}
+.prog h2{margin:0 0 6px}
+.bar{height:14px;background:#ece7f5;border-radius:99px;overflow:hidden;margin:6px 0 10px}
+.bar>span{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
+.phases{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+.phase{border:1px solid var(--line);border-radius:8px;padding:8px}
+.phase.done{border-color:var(--ok);background:var(--okbg)}
+.phase b{display:block;font-size:.9rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{display:inline-block;min-width:34px;text-align:center;padding:3px 8px;border-radius:99px;border:2px solid var(--accent);color:var(--accent);font-weight:700;font-size:.85rem;text-decoration:none;background:#fff}
+.chip.on{background:var(--accent);color:#fff}
+.chip.here{outline:3px solid #ffbf47;outline-offset:1px}
+.next{margin:10px 0 0;font-weight:600}
 .print-only{display:none}
 @media print{header,.noprint,.btn{display:none!important}.print-only{display:block}body{background:#fff}.card{border:0;padding:0}}
 </style>
@@ -207,6 +220,7 @@ function param(){var m=/[?&]m=(\d+)/.exec(window.location.search);return m?parse
 /* ---------- views ---------- */
 function home(){
   app.textContent="";
+  app.appendChild(progCard(0));
   var c=h("div",{class:"card"},h("h2",{text:"Choose your module"}),
     h("p",{text:"Your instructor’s module page links straight to the right task. You can also pick one here."}));
   var g=h("div",{class:"mods"});
@@ -218,9 +232,9 @@ function home(){
 }
 function aboutCard(){
   return h("div",{class:"card"},h("h2",{text:"How this works"}),
-    h("p",{text:"This is a reasoning space, not a calculator. Nothing here is scored. You make choices, read the evidence behind them, and write down your decision and why."}),
+    h("p",{text:"This is a reasoning space, not a calculator. The Hub does not score your choices. You make choices, read the evidence behind them, and write down your decision and why. Your instructor grades the Decision Hub Check in each module assignment, using the log you export and attach."}),
     h("div",{class:"notice"},h("b",{text:"Check your sources. "}),"Evidence cards can be several years old. Before you cite anything from a card, look for newer data or guidelines. Each log entry asks you to record that check."),
-    h("div",{class:"notice"},h("b",{text:"Save your work. "}),"Your log is stored only in this browser. Switching devices or clearing browser data erases it. Export your log as a file or PDF regularly."));
+    h("div",{class:"notice"},h("b",{text:"Save your work. "}),"Your log is stored only in this browser. Switching devices or clearing browser data erases it. After each entry, export your log (to attach to the assignment) and save a progress file (to reload it later)."));
 }
 function select(id,opts,val){
   var s=h("select",{id:id});
@@ -248,6 +262,7 @@ function radioVal(name){var e=document.querySelector('input[name="'+name+'"]:che
 
 function moduleView(m){
   var M=MODS[m];app.textContent="";
+  app.appendChild(progCard(m));
   var f=h("div",{class:"card"});
   f.appendChild(h("p",{class:"noprint"},h("a",{href:"?",text:"← All modules"})));
   f.appendChild(h("h2",{text:"Module "+m+": "+M.n}));
@@ -571,13 +586,58 @@ function save(m){
   renderLog();
 }
 
+var PHASES=[["Mobilize",[1,2]],["Assess",[3,4,5,6]],["Plan",[7,8,9,10]],["Implement",[11]],["Track",[12]]];
+function progCard(cur){var c=h("div",{class:"prog noprint",id:"prog"});c.setAttribute("data-cur",cur||0);setTimeout(renderProgress,0);return c;}
+function renderProgress(){
+  var box=document.getElementById("prog");if(!box)return;var cur=parseInt(box.getAttribute("data-cur"),10)||0;box.textContent="";
+  var done={};log.forEach(function(e){done[e.m]=true;});
+  var total=Object.keys(MODS).length,n=Object.keys(done).filter(function(k){return MODS[k];}).length,pct=Math.round(n/total*100);
+  box.appendChild(h("h2",{text:"Decision Log progress: "+n+" of "+total+" modules"}));
+  var b=h("div",{class:"bar",role:"progressbar","aria-valuemin":"0","aria-valuemax":String(total),"aria-valuenow":String(n),"aria-label":"Modules logged"},h("span"));
+  b.firstChild.style.width=pct+"%";box.appendChild(b);
+  var g=h("div",{class:"phases"});
+  PHASES.forEach(function(p){
+    var all=p[1].every(function(k){return done[k];});
+    var ph=h("div",{class:"phase"+(all?" done":"")},h("b",{text:p[0]+(all?" ✓":"")}));
+    var ch=h("div",{class:"chips"});
+    p[1].forEach(function(k){ch.appendChild(h("a",{href:"?m="+k,class:"chip"+(done[k]?" on":"")+(k===cur?" here":""),
+      "aria-label":"Module "+k+": "+MODS[k].n+(done[k]?" (logged)":" (not logged yet)"),title:MODS[k].n,text:(done[k]?"✓ ":"")+k}));});
+    ph.appendChild(ch);g.appendChild(ph);
+  });
+  box.appendChild(g);
+  var nx=0;for(var k=1;k<=total;k++){if(!done[k]){nx=k;break;}}
+  if(!nx)box.appendChild(h("p",{class:"next",text:"All 12 entries logged. Export your log for your Final Portfolio appendix."}));
+  else if(nx!==cur)box.appendChild(h("p",{class:"next"},"Next up: ",h("a",{href:"?m="+nx,text:"Module "+nx+": "+MODS[nx].n})));
+  else box.appendChild(h("p",{class:"next",text:"You are on your next entry: Module "+nx+". Save it below to fill this bar."}));
+}
+function exportBackup(){
+  var data=JSON.stringify({hub:"bridgewell_v2",name:studentName,saved:new Date().toISOString(),log:log},null,1);
+  var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([data],{type:"application/json"}));
+  a.download="Bridgewell_Progress_"+(studentName.trim()||"student").replace(/[^A-Za-z0-9]+/g,"_")+".json";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function importBackup(file){
+  var r=new FileReader();
+  r.onload=function(){
+    try{var d=JSON.parse(r.result);var list=Array.isArray(d)?d:d.log;if(!Array.isArray(list))throw 0;
+      var have={};log.forEach(function(e){have[e.id]=true;});var added=0;
+      list.forEach(function(e){if(e&&e.id&&MODS[e.m]&&e.inputs&&e.prompts&&e.currency&&!have[e.id]){log.push(e);have[e.id]=true;added++;}});
+      log.sort(function(a,b){return (a.ts||"")<(b.ts||"")?-1:1;});
+      if(!studentName&&d.name)studentName=String(d.name);
+      persist();renderLog();window.alert(added?("Loaded "+added+(added===1?" entry.":" entries.")):"No new entries found in that file.");
+    }catch(e){window.alert("That file is not a Bridgewell progress file. Use the .json file from “Save progress file.”");}
+  };
+  r.readAsText(file);
+}
 function logCard(){var c=h("div",{class:"card",id:"logcard"});c.appendChild(h("div",{id:"loginner"}));setTimeout(renderLog,0);return c;}
 function renderLog(){
-  var box=document.getElementById("loginner");if(!box)return;box.textContent="";
+  renderProgress();var box=document.getElementById("loginner");if(!box)return;box.textContent="";
   box.appendChild(h("h2",{text:"My Decision Log ("+log.length+(log.length===1?" entry":" entries")+")"}));
   box.appendChild(h("label",{for:"sname",class:"noprint",text:"Your name (needed for export)"}));
   var ni=h("input",{type:"text",id:"sname",class:"noprint"});ni.value=studentName;ni.addEventListener("input",function(){studentName=ni.value;persist();});box.appendChild(ni);
-  if(!log.length){box.appendChild(h("p",{text:"No entries yet. Complete a module task and save it here."}));return;}
+  var fi=h("input",{type:"file",accept:".json,application/json",id:"loadfile",class:"noprint",onchange:function(){if(fi.files[0])importBackup(fi.files[0]);fi.value="";}});
+  var loadRow=h("div",{class:"noprint"},h("label",{for:"loadfile",text:"Switched devices or browsers? Load your progress file (.json)"}),fi);
+  if(!log.length){box.appendChild(h("p",{text:"No entries yet. Complete a module task and save it here."}));box.appendChild(loadRow);return;}
   log.forEach(function(e,i){
     var dl=h("dl");
     e.inputs.forEach(function(p){dl.appendChild(h("dt",{text:p[0]}));dl.appendChild(h("dd",{text:p[1]}));});
@@ -591,7 +651,8 @@ function renderLog(){
   var bar=h("div",{class:"noprint"});
   bar.appendChild(h("button",{class:"btn",type:"button",text:"Export as text file",onclick:exportText}));
   bar.appendChild(h("button",{class:"btn alt",type:"button",text:"Print or save as PDF",onclick:function(){if(!studentName.trim()){window.alert("Add your name first.");return;}window.print();}}));
-  box.appendChild(bar);
+  bar.appendChild(h("button",{class:"btn alt",type:"button",text:"Save progress file (.json)",onclick:exportBackup}));
+  box.appendChild(bar);box.appendChild(h("p",{class:"cite noprint",text:"The text file or PDF is what you attach to assignments. The progress file lets you reload your log on another device or browser."}));box.appendChild(loadRow);
   box.appendChild(h("div",{class:"print-only",text:"Name: "+studentName+" · Printed "+new Date().toLocaleDateString()}));
 }
 function exportText(){
